@@ -1,0 +1,136 @@
+// Revision AI — Prisma Schema (MongoDB)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ---- User ----
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId     String   @unique
+  email       String   @unique
+  name        String
+  phone       String   // WhatsApp number with country code
+  groqApiKey  String?  // Optional user-provided Groq API key (encrypted)
+  isOnboarded Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categories       Category[]
+  topics           Topic[]
+  schedules        Schedule[]
+  whatsappChats    WhatsAppChat[]
+  chatConversation ChatConversation?
+
+  @@map("users")
+}
+
+// ---- Category ----
+model Category {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  name      String
+  color     String   @default("#6C5CE7") // Default purple
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topics Topic[]
+
+  @@unique([userId, name])
+  @@map("categories")
+}
+
+// ---- Topic ----
+model Topic {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String      @db.ObjectId
+  categoryId      String?     @db.ObjectId
+  title           String
+  userContent     String?     // Raw content pasted by user
+  enhancedContent String?     // AI-improved version
+  revisionLevel   Int         @default(0) // 0=basic, 1=examples, 2=storytelling, 3=advanced
+  status          TopicStatus @default(ACTIVE)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  schedules     Schedule[]
+  whatsappChats WhatsAppChat[]
+
+  @@index([userId, categoryId])
+  @@map("topics")
+}
+
+enum TopicStatus {
+  ACTIVE
+  PAUSED
+}
+
+// ---- Schedule ----
+model Schedule {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  topicId       String   @db.ObjectId
+  intervalDays  Int      // Remind every N days
+  preferredTime String   // e.g. "08:00"
+  phoneNumber   String?
+  nextRunAt     DateTime
+  lastSentAt    DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([isActive, nextRunAt])
+  @@index([userId])
+  @@map("schedules")
+}
+
+// ---- Chat Conversation (Web) ----
+model ChatConversation {
+  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String        @unique @db.ObjectId
+  messages  ChatMessage[]
+  updatedAt DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("chat_conversations")
+}
+
+// Embedded document for Web Chat messages
+type ChatMessage {
+  role      String   // "user" or "ai"
+  content   String
+  intent    String?  // e.g. "greeting", "clarify", "save"
+  timestamp DateTime @default(now())
+}
+
+// ---- WhatsApp Chat History ----
+model WhatsAppChat {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String           @db.ObjectId
+  topicId   String           @db.ObjectId
+  messages  WhatsAppMessage[]
+  createdAt DateTime         @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([userId, topicId])
+  @@map("whatsapp_chats")
+}
+
+// Embedded document for WhatsApp messages
+type WhatsAppMessage {
+  role      String   // "ai" or "user"
+  content   String
+  timestamp DateTime @default(now())
+}

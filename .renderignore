@@ -1,0 +1,41 @@
+# Render Ignore File
+# Prevents local dev files and sensitive data from being uploaded to Render.
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+frontend/.env*
+backend/.env*
+.env.example
+
+# Next.js / Build
+.next/
+frontend/.next/
+frontend/out/
+dist/
+build/
+
+# Local Tools / IDE
+.vscode/
+.idea/
+.project
+.gemini/
+brain/
+
+# Documentation / Management (Optional to ignore)
+*.resolved
+*.manageable_parts.md
+implementation_plan.md
+walkthrough.md
+task.md
